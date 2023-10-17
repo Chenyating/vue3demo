@@ -1,6 +1,6 @@
 import { defineStore, createPinia } from 'pinia'
 
-const initialCacheData = JSON.parse(localStorage.getItem('cacheData')) || {}
+const initialCacheData = JSON.parse(localStorage.getItem('cubeCache')) || {}
 
 export const cubeCacheStore = defineStore('cubeCache', {
   state: () => ({
@@ -47,7 +47,7 @@ export const cubeCacheStore = defineStore('cubeCache', {
           this.cacheData[cacheKey].autoSaveTimer = autoSaveTimer
         }
       }
-      localStorage.setItem('cacheData', JSON.stringify(this.cacheData))
+      localStorage.setItem('cubeCache', JSON.stringify(this.cacheData))
     },
     // 取消时间自动缓存
     cancelAutoSave(cacheKey) {
@@ -60,7 +60,7 @@ export const cubeCacheStore = defineStore('cubeCache', {
     clear(cacheKey) {
       if (this.cacheData[cacheKey]) {
         delete this.cacheData[cacheKey]
-        localStorage.setItem('cacheData', JSON.stringify(this.cacheData))
+        localStorage.setItem('cubeCache', JSON.stringify(this.cacheData))
         return true
       }
       return false
@@ -82,7 +82,7 @@ export const cubeCacheStore = defineStore('cubeCache', {
     // 获取指定缓存对象
     get(cacheKey) {
       if (!cacheKey) {
-        return {}
+        return null
       }
 
       if (this.cacheData[cacheKey]) {
@@ -91,13 +91,19 @@ export const cubeCacheStore = defineStore('cubeCache', {
 
         // 添加getVersion方法
         cacheObj.getVersion = (versionNum) => {
-          if (versionNum >= 0) {
+          if (versionNum > 0) {
             const versionKey = `version${versionNum}`
             return this.cacheData[cacheKey][versionKey]
               ? this.cacheData[cacheKey][versionKey].data
               : {}
           }
-          return {}
+          if (versionNum <= 0) {
+            const versionKey = `version1`
+            return this.cacheData[cacheKey][versionKey]
+              ? this.cacheData[cacheKey][versionKey].data
+              : {}
+          }
+          return null
         }
 
         // 添加getAllVersion方法
@@ -108,65 +114,50 @@ export const cubeCacheStore = defineStore('cubeCache', {
 
         // 检查是否存在diff方法
         // 添加diff方法
-        cacheObj.diff = (versionNum) => {
-          if (versionNum >= 0) {
-            const currentVersion = cacheObj.getVersion(versionNum)
-            const previousVersion = cacheObj.getVersion(versionNum - 1)
+        cacheObj.diff = (versionNumOrObject) => {
+          if (typeof versionNumOrObject === 'number') {
+            const versionNum = versionNumOrObject;
+            if (versionNum >= 0) {
+              const currentVersion = cacheObj.getVersion(versionNum);
+              const previousVersion = cacheObj.getVersion(versionNum - 1);
+              if (currentVersion && previousVersion) {
+                const diff = {};
+                for (const key in currentVersion) {
+                  if (
+                    JSON.stringify(currentVersion[key]) !==
+                    JSON.stringify(previousVersion[key])
+                  ) {
+                    diff[key] = [previousVersion[key], currentVersion[key]];
+                  }
+                }
+                return diff;
+              }
+              return null;
+            }
+          } else if (typeof versionNumOrObject === 'object') {
+            const currentVersion = versionNumOrObject;
+            const previousVersion = cacheObj;
             if (currentVersion && previousVersion) {
-              const diff = {}
+              const diff = {};
               for (const key in currentVersion) {
                 if (
                   JSON.stringify(currentVersion[key]) !==
                   JSON.stringify(previousVersion[key])
                 ) {
-                  diff[key] = [previousVersion[key], currentVersion[key]]
+                  diff[key] = [previousVersion[key], currentVersion[key]];
                 }
               }
-              return diff
+              return diff;
             }
           }
-          return {}
-        }
+          return null; // 其他情况下返回 null，或者你可以根据需求返回其他值
+        };
+        
+        
 
         return cacheObj
       }
-      return {}
+      return null
     },
-
-    // 返回指定版本的内容
-    getVersion(cacheKey, versionNum) {
-      if (
-        this.cacheData[cacheKey] &&
-        this.cacheData[cacheKey][`version${versionNum}`]
-      ) {
-        return this.cacheData[cacheKey][`version${versionNum}`].data
-      }
-      return {}
-    },
-
-    // 返回版本差异
-    diff(cacheKey, versionNum) {
-      if (
-        versionNum === undefined ||
-        versionNum === this.cacheData[cacheKey].latestVersion.number
-      ) {
-        return {}
-      }
-      const currentVersion = this.cacheData[cacheKey][`version${versionNum}`]
-      const nextVersion = this.cacheData[cacheKey][`version${versionNum + 1}`]
-      const diff = {}
-
-      for (const key in currentVersion.data) {
-        if (
-          JSON.stringify(currentVersion.data[key]) !==
-          JSON.stringify(nextVersion.data[key])
-        ) {
-          diff[key] = [currentVersion.data[key], nextVersion.data[key]]
-        }
-      }
-
-      return diff
-    },
-  },
-  persist: true,
+  }
 })

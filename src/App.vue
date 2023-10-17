@@ -1,11 +1,6 @@
 <template>
   <div>
-    {{ editableTabsValue }}
-    <br />缓存数据：<br />
-    <el-tag v-for="(item, index) in editableTabs" type="success">{{
-      item.name
-    }}</el-tag>
-    <br />缓存信息：<br />
+    所有缓存信息：<br />
     {{ allCache }}
     <br />路由示例图：<br />
     <el-tabs
@@ -45,7 +40,7 @@ export default {
   },
   computed: {
     allCache() {
-      return this.cacheData;
+      return this.cacheData
     },
   },
   methods: {

@@ -15,40 +15,46 @@ export const cubeCacheStore = defineStore('cubeCache', {
     },
     // 设置缓存
     set(cacheKey, cacheInfo, time = 0) {
-      if (!this.cacheData[cacheKey]) {
-        // 如果cacheKey不存在，将cacheInfo设置为初始版本
-        this.cacheData[cacheKey] = {
+      const { cacheData } = this;
+    
+      if (!cacheData[cacheKey]) {
+        cacheData[cacheKey] = {
           latestVersion: {
-            data: cacheInfo,
+            data: null, // 特殊值
             number: 0,
           },
-        }
+        };
       }
-
-      const lastVersion = this.cacheData[cacheKey].latestVersion
-
-      if (JSON.stringify(lastVersion.data) !== JSON.stringify(cacheInfo)) {
+    
+      const { latestVersion } = cacheData[cacheKey];
+    
+      if (latestVersion.data !== cacheInfo) {
         // 只有在cacheInfo与上一个版本存在差异时才存储为最新版本
-        const versionNumber = lastVersion.number + 1
-        this.cacheData[cacheKey][`version${versionNumber}`] = {
+        const versionNumber = latestVersion.number + 1;
+        cacheData[cacheKey][`version${versionNumber}`] = {
           data: cacheInfo,
-        }
-        this.cacheData[cacheKey].latestVersion = {
+        };
+        cacheData[cacheKey].latestVersion = {
           data: cacheInfo,
           number: versionNumber,
-        }
-
+        };
+    
         if (time > 0) {
           // 自动缓存
-          const autoSaveTimer = setInterval(() => {
-            this.set(cacheKey, cacheInfo)
-          }, time)
-
-          this.cacheData[cacheKey].autoSaveTimer = autoSaveTimer
+          if (cacheData[cacheKey].autoSaveTimer) {
+            clearInterval(cacheData[cacheKey].autoSaveTimer);
+          }
+          cacheData[cacheKey].autoSaveTimer = setInterval(() => {
+            this.set(cacheKey, cacheInfo);
+          }, time);
         }
       }
-      localStorage.setItem('cubeCache', JSON.stringify(this.cacheData))
+    
+      // 存储到localStorage
+      localStorage.setItem('cubeCache', JSON.stringify(cacheData));
     },
+     
+    
     // 取消时间自动缓存
     cancelAutoSave(cacheKey) {
       if (this.cacheData[cacheKey] && this.cacheData[cacheKey].autoSaveTimer) {
